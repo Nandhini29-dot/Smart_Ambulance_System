@@ -1,0 +1,20 @@
+PULSEROUTE — SMART AMBULANCE SYSTEM
+
+1) Start Apache and MySQL in XAMPP.
+2) Open http://localhost/phpmyadmin
+3) Import database/schema.sql
+4) In PowerShell in this folder:
+   py -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   Copy-Item .env.example .env
+   python create_demo_users.py
+   python app.py
+5) Open http://127.0.0.1:5000
+
+Demo login:
+Admin: admin / Admin@123
+Driver: driver1 / Driver@123
+
+Read README.md for complete setup and deployment steps.
+This portal records emergency requests for review by the control room. It does not automatically contact emergency services.

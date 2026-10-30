@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Track Request | PulseRoute{% endblock %}
+{% block content %}
+<div class="page-heading"><div class="eyebrow">REQUEST TRACKING</div><h1>Your request has been recorded</h1><p>Keep the reference number available when contacting the control room.</p></div>
+<div class="panel tracking-card">
+  <div class="tracking-header"><div><span class="muted-label">REFERENCE NUMBER</span><h2>{{ item.request_code }}</h2></div><span class="status-pill {{ item.status|lower|replace(' ', '-') }}">{{ item.status }}</span></div>
+  <div class="tracking-grid"><div><span>Patient / caller</span><b>{{ item.patient_name }}</b></div><div><span>Emergency type</span><b>{{ item.emergency_type }}</b></div><div><span>Pickup location</span><b>{{ item.location }}</b></div><div><span>Destination hospital</span><b>{{ item.hospital_name }} — {{ item.hospital_address }}</b></div><div><span>Priority</span><b>{{ item.priority }}</b></div></div>
+  {% if item.location_lat and item.location_lon and item.hospital_lat and item.hospital_lon %}
+  <section class="route-analysis panel" style="margin-top:24px">
+    <div class="eyebrow">AI ROUTE ANALYSIS</div>
+    <h2 style="margin:6px 0 8px">Recommended ambulance route</h2>
+    {% if route_analysis and route_analysis.routes %}
+      {% set best = route_analysis.routes|selectattr('is_recommended')|first %}
+      <div style="padding:14px;border-radius:12px;background:#fff1f1;border:1px solid #f2caca;margin:14px 0">
+        <strong style="color:#b71c1c">AI Recommended Route {{ best.id }}</strong>
+        <p style="margin:6px 0 0">Best balance of shorter distance and lower estimated road travel time.</p>
+        <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:10px">
+          <span><b>{{ best.distance_km }} km</b> distance</span>
+          <span><b>{{ best.duration_min }} min</b> estimated time</span>
+          <span><b>{{ best.score }}/100</b> route score</span>
+        </div>
+      </div>
+      <div class="route-options" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0">
+        {% for route in route_analysis.routes %}
+        <div style="border:1px solid {{ '#c62828' if route.is_recommended else '#dce1e8' }};border-radius:10px;padding:12px">
+          <strong>Route {{ route.id }}{% if route.is_recommended %} · Recommended{% endif %}</strong>
+          <p style="margin:7px 0 3px">{{ route.distance_km }} km · {{ route.duration_min }} min</p>
+          <small style="color:#697586">
+            {% if route.is_shortest %}Shortest distance{% endif %}
+            {% if route.is_shortest and route.is_fastest %} · {% endif %}
+            {% if route.is_fastest %}Fastest estimate{% endif %}
+            {% if not route.is_shortest and not route.is_fastest %}Alternative route{% endif %}
+          </small>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="field-help">{{ route_analysis.traffic_note }}</p>
+    {% else %}
+      <p>{{ route_analysis.message if route_analysis else "Route analysis is unavailable." }}</p>
+    {% endif %}
+    <h3 style="margin-top:22px">Pickup to destination map</h3>
+    <div id="routeMap" style="height:360px;border-radius:14px;overflow:hidden;margin:12px 0 8px"></div>
+  </section>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const start=[{{ item.location_lat }},{{ item.location_lon }}], end=[{{ item.hospital_lat }},{{ item.hospital_lon }}];
+    const routeData={{ (route_analysis.routes if route_analysis else [])|tojson }};
+    const map=L.map("routeMap").setView(start,12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+    L.marker(start).addTo(map).bindPopup("Patient pickup");
+    L.marker(end).addTo(map).bindPopup("Destination hospital");
+    let recommendedBounds=null;
+    routeData.forEach(route=>{
+      if(!route.geometry)return;
+      const isBest=route.is_recommended;
+      const line=L.geoJSON(route.geometry,{style:{color:isBest?"#c62828":"#738096",weight:isBest?6:4,opacity:isBest?0.95:0.65,dashArray:isBest?null:"7 7"}}).addTo(map);
+      line.bindPopup(`Route ${route.id}: ${route.distance_km} km, ${route.duration_min} min${isBest?" · AI recommended":""}`);
+      if(isBest)recommendedBounds=line.getBounds();
+    });
+    if(recommendedBounds)map.fitBounds(recommendedBounds,{padding:[24,24]});
+    else map.fitBounds([start,end],{padding:[24,24]});
+  });
+  </script>
+  {% endif %}
+  <div class="timeline"><div class="timeline-step done"><i>✓</i><span><b>Request submitted</b><small>Saved in the system</small></span></div><div class="timeline-step {{ 'done' if item.status not in ['Pending'] else '' }}"><i>2</i><span><b>Ambulance assignment</b><small>{{ 'An ambulance has been assigned or status has progressed.' if item.status not in ['Pending'] else 'Waiting for control room assignment.' }}</small></span></div><div class="timeline-step {{ 'done' if item.status in ['Arrived','Completed'] else '' }}"><i>3</i><span><b>Response progress</b><small>Latest status: {{ item.status }}</small></span></div></div>
+  <a class="btn btn-red" href="{{ url_for('home') }}">Back to overview</a>
+</div>
+{% endblock %}

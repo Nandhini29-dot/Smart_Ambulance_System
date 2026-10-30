@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Traffic AI | PulseRoute{% endblock %}
+{% block content %}
+<div class="page-heading"><div class="eyebrow">DECISION SUPPORT MODULE</div><h1>Traffic intelligence</h1><p>Assess a route's traffic conditions and receive a congestion classification.</p></div>
+<div class="traffic-layout">
+  <form class="panel form-panel" method="post"><div class="form-section-title"><span>AI</span><div><h2>Traffic condition inputs</h2><p>Provide the current observed conditions.</p></div></div>
+    <label>Traffic density <div class="range-row"><input id="density" type="range" name="density" min="1" max="10" value="{{ request.form.get('density', 5) }}" oninput="document.getElementById('densityValue').textContent=this.value"><b id="densityValue">{{ request.form.get('density', 5) }}</b></div><small class="field-hint">1 = light traffic · 10 = very heavy traffic</small></label>
+    <label>Road blockage<select name="blockage"><option value="no">No known blockage</option><option value="yes" {{ 'selected' if request.form.get('blockage') == 'yes' else '' }}>Blockage reported</option></select></label>
+    <label>Peak-hour conditions<select name="peak_hour"><option value="no">Off-peak</option><option value="yes" {{ 'selected' if request.form.get('peak_hour') == 'yes' else '' }}>Peak hour</option></select></label>
+    <button class="btn btn-red btn-wide" type="submit">Analyze traffic conditions →</button>
+    <div class="form-note"><span>ⓘ</span><p>This prediction is based on manually entered conditions and is not live traffic data.</p></div>
+  </form>
+  <div class="traffic-result-area">
+    {% if result %}
+    <div class="result-card {{ result.level|lower }}"><div class="result-top"><span class="eyebrow">PREDICTION RESULT</span><span class="ai-tag">AI ANALYSIS</span></div><div class="result-level">{{ result.level }}</div><p>Estimated congestion level for the supplied inputs.</p><div class="meter"><span style="width: {{ [result.score * 7, 100]|min }}%"></span></div><div class="result-metrics"><div><span>Condition score</span><b>{{ result.score }} / 15</b></div><div><span>Assessment</span><b>{{ result.level }} traffic</b></div></div><div class="result-advice"><b>Route guidance</b><p>{% if result.level == 'High' %}Consider an alternate route after checking local road conditions and verifying that it is safe.{% elif result.level == 'Moderate' %}Compare nearby route options and confirm road conditions before dispatch.{% else %}Conditions appear lighter based on the supplied inputs; verify locally before choosing a route.{% endif %}</p></div></div>
+    {% else %}<div class="traffic-empty"><div class="traffic-illustration">⌁</div><h2>Turn conditions into insight</h2><p>Enter traffic density, blockage and peak-hour information. The module will classify congestion and provide cautious route guidance.</p><div class="mini-stat-row"><span>01 <b>Input conditions</b></span><span>02 <b>Assess congestion</b></span><span>03 <b>Review guidance</b></span></div></div>{% endif %}
+    <div class="panel disclaimer-panel"><span>ⓘ</span><p><b>Operational note</b><br>Actual route selection requires verified mapping, live traffic and emergency-service coordination integrations. This module is a prototype decision aid.</p></div>
+  </div>
+</div>
+{% endblock %}
